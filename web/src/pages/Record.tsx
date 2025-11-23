@@ -51,6 +51,7 @@ export function RecordPage() {
         try {
             await saveInteraction({
                 owner_uid: user.id,
+                contact_id: null, // Will link to contact later
                 transcript: result.transcript,
                 extracted: result.extracted,
                 occurred_at: new Date().toISOString(),
