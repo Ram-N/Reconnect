@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate, Link, useLocation } from 'react-router-dom';
 import { RecordPage } from './pages/Record';
 import { LoginPage } from './pages/Login';
-import { UpNextPage } from './pages/UpNext';
 import { ContactsPage } from './pages/Contacts';
-import { Mic, Calendar, Phone } from 'lucide-react';
+import { HomePage } from './pages/Home';
+import { ContactDetailPage } from './pages/ContactDetail';
+import { FollowUpsPage } from './pages/FollowUps';
+import { Home, Mic, CheckSquare, Phone } from 'lucide-react';
 
 function NavBar() {
   const location = useLocation();
@@ -14,13 +16,17 @@ function NavBar() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around p-4 pb-6 z-50">
-      <Link to="/up-next" className={getLinkClass('/up-next')}>
-        <Calendar className="w-6 h-6 mb-1" />
-        Up Next
-      </Link>
       <Link to="/" className={getLinkClass('/')}>
+        <Home className="w-6 h-6 mb-1" />
+        Home
+      </Link>
+      <Link to="/record" className={getLinkClass('/record')}>
         <Mic className="w-6 h-6 mb-1" />
         Record
+      </Link>
+      <Link to="/follow-ups" className={getLinkClass('/follow-ups')}>
+        <CheckSquare className="w-6 h-6 mb-1" />
+        Follow-ups
       </Link>
       <Link to="/contacts" className={getLinkClass('/contacts')}>
         <Phone className="w-6 h-6 mb-1" />
@@ -35,10 +41,13 @@ function App() {
     <BrowserRouter>
       <div className="min-h-screen bg-gray-50">
         <Routes>
-          <Route path="/" element={<RecordPage />} />
+          <Route path="/" element={<HomePage />} />
+          <Route path="/record" element={<RecordPage />} />
+          <Route path="/record/:contactId" element={<RecordPage />} />
           <Route path="/login" element={<LoginPage />} />
-          <Route path="/up-next" element={<UpNextPage />} />
+          <Route path="/follow-ups" element={<FollowUpsPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
+          <Route path="/contacts/:contactId" element={<ContactDetailPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <NavBar />

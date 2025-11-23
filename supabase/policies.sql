@@ -3,6 +3,7 @@ alter table contacts enable row level security;
 alter table people enable row level security;
 alter table interactions enable row level security;
 alter table interaction_embeddings enable row level security;
+alter table followups enable row level security;
 
 -- Policies for contacts
 create policy "Users can only see their own contacts"
@@ -121,5 +122,38 @@ create policy "Users can delete embeddings for their interactions"
     select 1 from interactions
     join contacts on contacts.id = interactions.contact_id
     where interactions.id = interaction_embeddings.interaction_id
+    and contacts.owner_uid = auth.uid()
+  ));
+
+-- Policies for followups (via contact_id)
+create policy "Users can see followups for their contacts"
+  on followups for select
+  using (exists (
+    select 1 from contacts
+    where contacts.id = followups.contact_id
+    and contacts.owner_uid = auth.uid()
+  ));
+
+create policy "Users can insert followups for their contacts"
+  on followups for insert
+  with check (exists (
+    select 1 from contacts
+    where contacts.id = followups.contact_id
+    and contacts.owner_uid = auth.uid()
+  ));
+
+create policy "Users can update followups for their contacts"
+  on followups for update
+  using (exists (
+    select 1 from contacts
+    where contacts.id = followups.contact_id
+    and contacts.owner_uid = auth.uid()
+  ));
+
+create policy "Users can delete followups for their contacts"
+  on followups for delete
+  using (exists (
+    select 1 from contacts
+    where contacts.id = followups.contact_id
     and contacts.owner_uid = auth.uid()
   ));

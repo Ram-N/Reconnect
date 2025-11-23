@@ -61,3 +61,103 @@ export async function getUpNext() {
     if (error) throw error;
     return data;
 }
+
+export async function getContact(id: string) {
+    const { data, error } = await supabase
+        .from('contacts')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+export async function getContactInteractions(contactId: string) {
+    const { data, error } = await supabase
+        .from('interactions')
+        .select('*')
+        .eq('contact_id', contactId)
+        .order('occurred_at', { ascending: false });
+
+    if (error) throw error;
+    return data;
+}
+
+export async function getContactPeople(contactId: string) {
+    const { data, error } = await supabase
+        .from('people')
+        .select('*')
+        .eq('contact_id', contactId);
+
+    if (error) throw error;
+    return data;
+}
+
+export async function getFollowUps(filter?: 'all' | 'overdue' | 'today' | 'week') {
+    let query = supabase
+        .from('followups')
+        .select(`
+            id,
+            contact_id,
+            interaction_id,
+            task,
+            due_date,
+            completed,
+            contacts (display_name)
+        `)
+        .order('due_date', { ascending: true });
+
+    // Apply filters based on filter parameter
+    if (filter === 'overdue') {
+        const today = new Date().toISOString().split('T')[0];
+        query = query.lt('due_date', today).eq('completed', false);
+    } else if (filter === 'today') {
+        const today = new Date().toISOString().split('T')[0];
+        query = query.eq('due_date', today).eq('completed', false);
+    } else if (filter === 'week') {
+        const today = new Date();
+        const weekFromNow = new Date(today);
+        weekFromNow.setDate(weekFromNow.getDate() + 7);
+        query = query
+            .gte('due_date', today.toISOString().split('T')[0])
+            .lte('due_date', weekFromNow.toISOString().split('T')[0])
+            .eq('completed', false);
+    }
+
+    const { data, error } = await query;
+
+    if (error) throw error;
+    return data;
+}
+
+export async function toggleFollowUpComplete(id: string, completed: boolean) {
+    const { data, error } = await supabase
+        .from('followups')
+        .update({
+            completed,
+            completed_at: completed ? new Date().toISOString() : null
+        })
+        .eq('id', id)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
+export async function createFollowUp(followup: {
+    contact_id: string;
+    interaction_id: string;
+    task: string;
+    due_date: string;
+}) {
+    const { data, error } = await supabase
+        .from('followups')
+        .insert(followup)
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}

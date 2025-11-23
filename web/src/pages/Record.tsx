@@ -1,23 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useRecorder } from '../hooks/useRecorder';
-import { processAudio, saveInteraction, supabase } from '../lib/api';
-import { Mic, Square, Upload, Loader2, Save, Edit2, Check, X } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { processAudio, saveInteraction, supabase, getContacts } from '../lib/api';
+import { Mic, Square, Upload, Loader2, X, Plus, ArrowLeft } from 'lucide-react';
+import { Button, PersonChip, Toast } from '../components';
+
+interface Contact {
+    id: string;
+    display_name: string;
+}
+
+interface EditableData {
+    transcript: string;
+    selectedContactIds: string[];
+    people: Array<{ name: string; relation: string }>;
+    topics: string[];
+    facts: Array<{ category: string; description: string }>;
+    followups: Array<{ task: string; due_date: string }>;
+}
 
 export function RecordPage() {
+    const { contactId } = useParams<{ contactId?: string }>();
+    const navigate = useNavigate();
     const { isRecording, duration, startRecording, stopRecording, audioBlob, resetRecording } = useRecorder();
     const [isProcessing, setIsProcessing] = useState(false);
     const [result, setResult] = useState<any>(null);
+    const [editableData, setEditableData] = useState<EditableData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [user, setUser] = useState<any>(null);
     const [isSaving, setIsSaving] = useState(false);
-    const navigate = useNavigate();
+    const [contacts, setContacts] = useState<Contact[]>([]);
+    const [showContactSearch, setShowContactSearch] = useState(false);
+    const [contactSearch, setContactSearch] = useState('');
+    const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
 
     useEffect(() => {
-        supabase.auth.getUser().then(({ data }) => {
-            setUser(data.user);
-        });
+        loadUserAndContacts();
     }, []);
+
+    useEffect(() => {
+        if (contactId && contacts.length > 0) {
+            // Pre-select contact if contactId is in route params
+            setEditableData(prev => prev ? {
+                ...prev,
+                selectedContactIds: [contactId]
+            } : null);
+        }
+    }, [contactId, contacts]);
+
+    const loadUserAndContacts = async () => {
+        const { data } = await supabase.auth.getUser();
+        setUser(data.user);
+
+        if (data.user) {
+            try {
+                const contactsData = await getContacts();
+                setContacts(contactsData || []);
+            } catch (err) {
+                console.error('Failed to load contacts:', err);
+            }
+        }
+    };
 
     const handleStop = async () => {
         stopRecording();
@@ -32,6 +75,16 @@ export function RecordPage() {
         try {
             const data = await processAudio(audioBlob);
             setResult(data);
+
+            // Initialize editable data from AI result
+            setEditableData({
+                transcript: data.transcript || '',
+                selectedContactIds: contactId ? [contactId] : [],
+                people: data.extracted?.people_mentioned || [],
+                topics: data.extracted?.key_topics || [],
+                facts: data.extracted?.facts || [],
+                followups: data.extracted?.followups || [],
+            });
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'Failed to process audio');
@@ -45,28 +98,97 @@ export function RecordPage() {
             setError('You must be logged in to save.');
             return;
         }
-        if (!result) return;
+        if (!editableData || editableData.selectedContactIds.length === 0) {
+            setError('Please select at least one contact.');
+            return;
+        }
 
         setIsSaving(true);
         try {
-            await saveInteraction({
-                owner_uid: user.id,
-                contact_id: null, // Will link to contact later
-                transcript: result.transcript,
-                extracted: result.extracted,
-                occurred_at: new Date().toISOString(),
-                // In a real app, we'd upload the audio to storage first and get the path
-                // audio_path: '...',
-            });
-            setResult(null);
-            resetRecording();
-            alert('Saved successfully!'); // Replace with better UI
+            // Save interaction for each selected contact
+            for (const contactId of editableData.selectedContactIds) {
+                await saveInteraction({
+                    owner_uid: user.id,
+                    contact_id: contactId,
+                    transcript: editableData.transcript,
+                    extracted: {
+                        people_mentioned: editableData.people,
+                        key_topics: editableData.topics,
+                        facts: editableData.facts,
+                        followups: editableData.followups,
+                    },
+                    occurred_at: new Date().toISOString(),
+                });
+            }
+
+            setToast({ message: 'Note saved successfully!', type: 'success' });
+
+            // Reset and navigate
+            setTimeout(() => {
+                setResult(null);
+                setEditableData(null);
+                resetRecording();
+                navigate('/');
+            }, 1500);
         } catch (err: any) {
             console.error(err);
             setError(err.message || 'Failed to save');
+            setToast({ message: 'Failed to save note', type: 'error' });
         } finally {
             setIsSaving(false);
         }
+    };
+
+    const addPerson = () => {
+        if (!editableData) return;
+        setEditableData({
+            ...editableData,
+            people: [...editableData.people, { name: '', relation: '' }]
+        });
+    };
+
+    const updatePerson = (index: number, field: 'name' | 'relation', value: string) => {
+        if (!editableData) return;
+        const updated = [...editableData.people];
+        updated[index] = { ...updated[index], [field]: value };
+        setEditableData({ ...editableData, people: updated });
+    };
+
+    const removePerson = (index: number) => {
+        if (!editableData) return;
+        setEditableData({
+            ...editableData,
+            people: editableData.people.filter((_, i) => i !== index)
+        });
+    };
+
+    const addTopic = () => {
+        const topic = prompt('Enter topic:');
+        if (topic && editableData) {
+            setEditableData({
+                ...editableData,
+                topics: [...editableData.topics, topic]
+            });
+        }
+    };
+
+    const removeTopic = (index: number) => {
+        if (!editableData) return;
+        setEditableData({
+            ...editableData,
+            topics: editableData.topics.filter((_, i) => i !== index)
+        });
+    };
+
+    const toggleContact = (id: string) => {
+        if (!editableData) return;
+        const isSelected = editableData.selectedContactIds.includes(id);
+        setEditableData({
+            ...editableData,
+            selectedContactIds: isSelected
+                ? editableData.selectedContactIds.filter(cid => cid !== id)
+                : [...editableData.selectedContactIds, id]
+        });
     };
 
     const formatDuration = (sec: number) => {
@@ -75,48 +197,199 @@ export function RecordPage() {
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
-    if (result) {
+    const filteredContacts = contacts.filter(c =>
+        c.display_name.toLowerCase().includes(contactSearch.toLowerCase())
+    );
+
+    // Review/Edit Screen
+    if (editableData) {
         return (
-            <div className="p-4 max-w-md mx-auto">
-                <h2 className="text-xl font-bold mb-4">Review</h2>
-                <div className="bg-white p-4 rounded shadow mb-4">
-                    <h3 className="font-semibold mb-2">Transcript</h3>
-                    <p className="text-gray-700 text-sm">{result.transcript}</p>
-                </div>
-                <div className="bg-white p-4 rounded shadow mb-4">
-                    <h3 className="font-semibold mb-2">Extracted Data</h3>
-                    <pre className="text-xs overflow-auto bg-gray-50 p-2 rounded">
-                        {JSON.stringify(result.extracted, null, 2)}
-                    </pre>
+            <div className="min-h-screen bg-gray-50 p-4 pb-24">
+                <div className="max-w-2xl mx-auto">
+                    <button
+                        onClick={() => { setResult(null); setEditableData(null); }}
+                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+                    >
+                        <ArrowLeft className="w-5 h-5" />
+                        <span>Back to recording</span>
+                    </button>
+
+                    <h2 className="text-2xl font-bold mb-6">Review & Edit Note</h2>
+
+                    {/* Contact Selection */}
+                    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                        <h3 className="font-semibold mb-3">Select Contact(s) *</h3>
+                        <div className="space-y-2">
+                            {editableData.selectedContactIds.map(id => {
+                                const contact = contacts.find(c => c.id === id);
+                                return contact ? (
+                                    <div key={id} className="flex items-center justify-between bg-blue-50 p-2 rounded">
+                                        <span className="text-sm font-medium">{contact.display_name}</span>
+                                        <button
+                                            onClick={() => toggleContact(id)}
+                                            className="text-blue-600 hover:text-blue-800"
+                                        >
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : null;
+                            })}
+                        </div>
+                        <Button
+                            variant="secondary"
+                            size="sm"
+                            className="mt-3 w-full"
+                            onClick={() => setShowContactSearch(!showContactSearch)}
+                        >
+                            {showContactSearch ? 'Hide' : 'Add'} Contact
+                        </Button>
+                        {showContactSearch && (
+                            <div className="mt-3">
+                                <input
+                                    type="text"
+                                    placeholder="Search contacts..."
+                                    value={contactSearch}
+                                    onChange={(e) => setContactSearch(e.target.value)}
+                                    className="w-full px-3 py-2 border rounded-lg mb-2"
+                                />
+                                <div className="max-h-40 overflow-y-auto space-y-1">
+                                    {filteredContacts.map(contact => (
+                                        <button
+                                            key={contact.id}
+                                            onClick={() => {
+                                                toggleContact(contact.id);
+                                                setShowContactSearch(false);
+                                                setContactSearch('');
+                                            }}
+                                            disabled={editableData.selectedContactIds.includes(contact.id)}
+                                            className="w-full text-left px-3 py-2 hover:bg-gray-100 rounded text-sm disabled:opacity-50"
+                                        >
+                                            {contact.display_name}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Transcript */}
+                    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                        <h3 className="font-semibold mb-3">Transcript</h3>
+                        <textarea
+                            value={editableData.transcript}
+                            onChange={(e) => setEditableData({ ...editableData, transcript: e.target.value })}
+                            className="w-full h-32 px-3 py-2 border rounded-lg resize-none"
+                            placeholder="Transcript of the conversation..."
+                        />
+                    </div>
+
+                    {/* People Mentioned */}
+                    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold">People Mentioned</h3>
+                            <button onClick={addPerson} className="text-blue-600 hover:text-blue-700">
+                                <Plus className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="space-y-2">
+                            {editableData.people.map((person, idx) => (
+                                <div key={idx} className="flex gap-2">
+                                    <input
+                                        type="text"
+                                        placeholder="Name"
+                                        value={person.name}
+                                        onChange={(e) => updatePerson(idx, 'name', e.target.value)}
+                                        className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                                    />
+                                    <input
+                                        type="text"
+                                        placeholder="Relation"
+                                        value={person.relation}
+                                        onChange={(e) => updatePerson(idx, 'relation', e.target.value)}
+                                        className="flex-1 px-3 py-2 border rounded-lg text-sm"
+                                    />
+                                    <button
+                                        onClick={() => removePerson(idx)}
+                                        className="p-2 text-red-600 hover:bg-red-50 rounded"
+                                    >
+                                        <X className="w-4 h-4" />
+                                    </button>
+                                </div>
+                            ))}
+                            {editableData.people.length === 0 && (
+                                <p className="text-sm text-gray-500 italic">No people mentioned</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Topics */}
+                    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold">Key Topics</h3>
+                            <button onClick={addTopic} className="text-blue-600 hover:text-blue-700">
+                                <Plus className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {editableData.topics.map((topic, idx) => (
+                                <span
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-sm"
+                                >
+                                    {topic}
+                                    <button onClick={() => removeTopic(idx)} className="hover:bg-blue-100 rounded-full p-0.5">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </span>
+                            ))}
+                            {editableData.topics.length === 0 && (
+                                <p className="text-sm text-gray-500 italic">No topics tagged</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-3 sticky bottom-20 bg-gray-50 py-4">
+                        <Button
+                            variant="secondary"
+                            onClick={() => { setResult(null); setEditableData(null); resetRecording(); }}
+                            className="flex-1"
+                        >
+                            Discard
+                        </Button>
+                        <Button
+                            onClick={handleSave}
+                            isLoading={isSaving}
+                            disabled={editableData.selectedContactIds.length === 0}
+                            className="flex-1"
+                        >
+                            Save Note
+                        </Button>
+                    </div>
+
+                    {error && (
+                        <div className="mt-4 p-3 bg-red-50 text-red-600 text-sm rounded-lg">
+                            {error}
+                        </div>
+                    )}
                 </div>
 
-                <div className="flex gap-3">
-                    <button
-                        onClick={() => { setResult(null); resetRecording(); }}
-                        className="flex-1 py-2 border border-gray-300 text-gray-700 rounded hover:bg-gray-50"
-                    >
-                        Discard
-                    </button>
-                    <button
-                        onClick={handleSave}
-                        disabled={isSaving}
-                        className="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 flex items-center justify-center gap-2"
-                    >
-                        {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Save
-                    </button>
-                </div>
-                {!user && (
-                    <p className="text-red-500 text-sm mt-2 text-center">Please log in to save.</p>
+                {toast && (
+                    <Toast
+                        message={toast.message}
+                        type={toast.type}
+                        onClose={() => setToast(null)}
+                    />
                 )}
             </div>
         );
     }
 
+    // Recording Screen
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4">
+        <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-4 pb-24">
             <div className="w-full max-w-md bg-white rounded-xl shadow-lg p-8 text-center">
-                <h1 className="text-2xl font-bold mb-8 text-gray-800">Reconnect</h1>
+                <h1 className="text-2xl font-bold mb-8 text-gray-800">Record a Note</h1>
 
                 <div className="mb-8">
                     <div className="text-6xl font-mono text-gray-700 mb-4">
