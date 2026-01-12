@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { getUpNext, supabase } from '../lib/api';
 import { Loader2, Calendar, Phone, Mic } from 'lucide-react';
 import { Link } from 'react-router-dom';
