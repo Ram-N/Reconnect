@@ -7,3 +7,4 @@ export { SearchBar } from './SearchBar';
 export { PersonChip } from './PersonChip';
 export { TopNav } from './TopNav';
 export { AddContactModal } from './AddContactModal';
+export { UpdatePrompt } from './UpdatePrompt';
