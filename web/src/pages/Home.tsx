@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Mic, Search, Calendar, MessageSquare, Users, TrendingUp } from 'lucide-react';
-import { Button, ContactCard, EmptyState } from '../components';
+import { Button, ContactCard, EmptyState, TopNav } from '../components';
 import { supabase, getUpNext } from '../lib/api';
 
 interface RecentInteraction {
@@ -35,7 +35,20 @@ export function HomePage() {
     const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
+        // Initial load
         loadDashboardData();
+
+        // Listen for auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+            setUser(session?.user || null);
+            if (session?.user) {
+                loadDashboardData();
+            }
+        });
+
+        return () => {
+            subscription.unsubscribe();
+        };
     }, []);
 
     const loadDashboardData = async () => {
@@ -111,6 +124,17 @@ export function HomePage() {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
 
+    if (isLoading && !user) {
+        return (
+            <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+                <div className="text-center">
+                    <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                    <p className="text-gray-600">Loading...</p>
+                </div>
+            </div>
+        );
+    }
+
     if (!user) {
         return (
             <div className="min-h-screen bg-gray-50 p-4 pb-24">
@@ -135,11 +159,11 @@ export function HomePage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 pb-24">
-            <div className="max-w-2xl mx-auto">
+        <div className="min-h-screen bg-gray-50">
+            <TopNav user={user} />
+            <div className="max-w-2xl mx-auto p-4 pb-24">
                 {/* Header */}
                 <div className="mb-8 pt-4">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Reconnect</h1>
                     <p className="text-gray-600">Stay in touch with the people who matter</p>
                 </div>
 

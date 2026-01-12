@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Phone, Mail, Edit, Mic, Calendar, User as UserIcon } from 'lucide-react';
-import { Button, InteractionCard, PersonChip, EmptyState } from '../components';
+import { Phone, Mail, Edit, Mic, Calendar, User as UserIcon } from 'lucide-react';
+import { Button, InteractionCard, PersonChip, EmptyState, TopNav } from '../components';
 import { supabase } from '../lib/api';
 
 interface Contact {
@@ -38,6 +38,7 @@ export function ContactDetailPage() {
     const [people, setPeople] = useState<Person[]>([]);
     const [interactions, setInteractions] = useState<Interaction[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [user, setUser] = useState<any>(null);
 
     useEffect(() => {
         if (contactId) {
@@ -48,6 +49,10 @@ export function ContactDetailPage() {
     const loadContactData = async () => {
         setIsLoading(true);
         try {
+            // Load user
+            const { data: { user } } = await supabase.auth.getUser();
+            setUser(user);
+
             // Load contact details
             const { data: contactData, error: contactError } = await supabase
                 .from('contacts')
@@ -125,25 +130,18 @@ export function ContactDetailPage() {
 
     return (
         <div className="min-h-screen bg-gray-50 pb-24">
-            {/* Header */}
-            <div className="bg-white border-b sticky top-0 z-10">
-                <div className="max-w-2xl mx-auto px-4 py-4">
-                    <button
-                        onClick={() => navigate('/contacts')}
-                        className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
-                    >
-                        <ArrowLeft className="w-5 h-5" />
-                        <span>Back to Contacts</span>
-                    </button>
+            <TopNav user={user} showBack={true} title={contact.display_name} />
 
+            {/* Contact Details */}
+            <div className="max-w-2xl mx-auto px-4 py-6">
+                <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
                     <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-4">
-                            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-                                <UserIcon className="w-8 h-8 text-blue-600" />
+                        <div className="flex items-start gap-4 flex-1">
+                            <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
+                                <UserIcon className="w-6 h-6 text-blue-600" />
                             </div>
-                            <div>
-                                <h1 className="text-2xl font-bold text-gray-900 mb-2">{contact.display_name}</h1>
-                                <div className="space-y-1">
+                            <div className="flex-1">
+                                <div className="space-y-2">
                                     {contact.primary_phone && (
                                         <div className="flex items-center gap-2 text-sm text-gray-600">
                                             <Phone className="w-4 h-4" />

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getContacts, supabase } from '../lib/api';
 import { Plus, SlidersHorizontal, Users } from 'lucide-react';
-import { ContactCard, SearchBar, EmptyState, Button } from '../components';
+import { ContactCard, SearchBar, EmptyState, Button, TopNav, AddContactModal } from '../components';
 
 interface Contact {
     id: string;
@@ -26,6 +26,7 @@ export function ContactsPage() {
     const [filterBy, setFilterBy] = useState<FilterOption>('all');
     const [showFilters, setShowFilters] = useState(false);
     const [user, setUser] = useState<any>(null);
+    const [showAddModal, setShowAddModal] = useState(false);
 
     useEffect(() => {
         loadData();
@@ -80,6 +81,33 @@ export function ContactsPage() {
         } finally {
             setLoading(false);
         }
+    };
+
+    const handleSaveContact = async (contactData: {
+        display_name: string;
+        primary_phone?: string;
+        primary_email?: string;
+        cadence_days?: number;
+        notes?: string;
+    }) => {
+        // Calculate next check-in date based on cadence
+        const nextCheckinDate = contactData.cadence_days
+            ? new Date(Date.now() + contactData.cadence_days * 24 * 60 * 60 * 1000).toISOString()
+            : null;
+
+        const { data, error } = await supabase
+            .from('contacts')
+            .insert({
+                ...contactData,
+                next_checkin_date: nextCheckinDate,
+            })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        // Reload contacts list
+        await loadData();
     };
 
     const getFilteredAndSortedContacts = () => {
@@ -151,12 +179,12 @@ export function ContactsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 pb-24">
-            <div className="max-w-2xl mx-auto">
+        <div className="min-h-screen bg-gray-50">
+            <TopNav user={user} title="Contacts" />
+            <div className="max-w-2xl mx-auto p-4 pb-24">
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6">
                     <div>
-                        <h1 className="text-3xl font-bold text-gray-900">Contacts</h1>
                         <p className="text-sm text-gray-600 mt-1">
                             {contacts.length} {contacts.length === 1 ? 'contact' : 'contacts'}
                         </p>
@@ -165,7 +193,7 @@ export function ContactsPage() {
                         variant="primary"
                         size="sm"
                         icon={<Plus className="w-4 h-4" />}
-                        onClick={() => {/* TODO: Add contact modal */}}
+                        onClick={() => setShowAddModal(true)}
                     >
                         Add Contact
                     </Button>
@@ -333,7 +361,7 @@ export function ContactsPage() {
                             !search && filterBy === 'all' ? (
                                 <Button
                                     icon={<Plus className="w-5 h-5" />}
-                                    onClick={() => {/* TODO: Add contact modal */}}
+                                    onClick={() => setShowAddModal(true)}
                                 >
                                     Add Your First Contact
                                 </Button>
@@ -341,6 +369,13 @@ export function ContactsPage() {
                         }
                     />
                 )}
+
+                {/* Add Contact Modal */}
+                <AddContactModal
+                    isOpen={showAddModal}
+                    onClose={() => setShowAddModal(false)}
+                    onSave={handleSaveContact}
+                />
             </div>
         </div>
     );

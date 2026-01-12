@@ -4,6 +4,11 @@
 
 ```bash
 cd /home/ram/projects/Reconnect/web
+
+# First, check if Supabase is active (recommended)
+npm run check:supabase
+
+# Then start the dev server
 npm run dev
 ```
 
@@ -38,7 +43,30 @@ Then open: **http://localhost:5173**
 
 ## Troubleshooting
 
+- **"Failed to fetch" errors?** → Supabase project might be paused
+  ```bash
+  cd web
+  npm run check:supabase
+  ```
+  If paused: Go to https://supabase.com/dashboard and resume your project (takes 30-60s to wake up)
+
 - **Not logged in?** → Go to `/login` and create an account
 - **Microphone not working?** → Check browser permissions
 - **Processing fails?** → Check browser console (F12) for errors
 - **Can't save?** → Make sure you're logged in first
+
+## Useful Commands
+
+```bash
+# Check if Supabase is active
+npm run check:supabase
+
+# Start development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run linter
+npm run lint
+```

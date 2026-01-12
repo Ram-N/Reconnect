@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CheckCircle, Circle, Calendar, User, AlertCircle } from 'lucide-react';
-import { EmptyState, Button } from '../components';
+import { EmptyState, Button, TopNav } from '../components';
 import { supabase } from '../lib/api';
 
 interface FollowUp {
@@ -156,11 +156,11 @@ export function FollowUpsPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 p-4 pb-24">
-            <div className="max-w-2xl mx-auto">
+        <div className="min-h-screen bg-gray-50">
+            <TopNav user={user} title="Follow-ups" />
+            <div className="max-w-2xl mx-auto p-4 pb-24">
                 {/* Header */}
                 <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Follow-ups</h1>
                     <p className="text-gray-600">Track action items from your conversations</p>
                 </div>
 
