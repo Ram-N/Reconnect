@@ -56,7 +56,7 @@ export function FollowUpsPage() {
 
             const formattedData = data?.map(f => ({
                 ...f,
-                contact: f.contacts ? { display_name: f.contacts.display_name } : undefined
+                contact: f.contacts ? { display_name: (f.contacts as any).display_name } : undefined
             })) || [];
 
             setFollowups(formattedData);

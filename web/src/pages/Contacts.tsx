@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getContacts, supabase } from '../lib/api';
+import { supabase } from '../lib/api';
 import { Plus, SlidersHorizontal, Users } from 'lucide-react';
 import { ContactCard, SearchBar, EmptyState, Button, TopNav, AddContactModal } from '../components';
 

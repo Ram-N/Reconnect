@@ -2,8 +2,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useRecorder } from '../hooks/useRecorder';
 import { processAudio, saveInteraction, supabase, getContacts } from '../lib/api';
-import { Mic, Square, Upload, Loader2, X, Plus, ArrowLeft } from 'lucide-react';
-import { Button, PersonChip, Toast, TopNav } from '../components';
+import { Mic, Square, Upload, Loader2, X, Plus } from 'lucide-react';
+import { Button, Toast, TopNav } from '../components';
 
 interface Contact {
     id: string;

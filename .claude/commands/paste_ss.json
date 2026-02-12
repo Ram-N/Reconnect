@@ -1,0 +1,9 @@
+{
+  "name": "paste_ss",
+  "description": "Pastes the most recent screenshot from Windows Screenshots folder",
+  "run": {
+    "command": "~/paste_screenshot.sh",
+    "capture_stdout": true,
+    "show_capture": false
+  }
+}

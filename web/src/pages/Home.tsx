@@ -84,7 +84,7 @@ export function HomePage() {
             if (!intError && interactions) {
                 setRecentInteractions(interactions.map(i => ({
                     ...i,
-                    contact: i.contacts ? { display_name: i.contacts.display_name } : undefined
+                    contact: i.contacts ? { display_name: (i.contacts as any).display_name } : undefined
                 })));
             }
 
