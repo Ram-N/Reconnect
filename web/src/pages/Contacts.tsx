@@ -90,6 +90,10 @@ export function ContactsPage() {
         cadence_days?: number;
         notes?: string;
     }) => {
+        // Get current user
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) throw new Error('Not authenticated');
+
         // Calculate next check-in date based on cadence
         const nextCheckinDate = contactData.cadence_days
             ? new Date(Date.now() + contactData.cadence_days * 24 * 60 * 60 * 1000).toISOString()
@@ -99,6 +103,7 @@ export function ContactsPage() {
             .from('contacts')
             .insert({
                 ...contactData,
+                owner_uid: user.id,
                 next_checkin_date: nextCheckinDate,
             })
             .select()
