@@ -24,7 +24,7 @@ export function RecordPage() {
     const navigate = useNavigate();
     const { isRecording, duration, startRecording, stopRecording, audioBlob, resetRecording } = useRecorder();
     const [isProcessing, setIsProcessing] = useState(false);
-    const [result, setResult] = useState<any>(null);
+    const [, setResult] = useState<any>(null);
     const [editableData, setEditableData] = useState<EditableData | null>(null);
     const [error, setError] = useState<string | null>(null);
     const [user, setUser] = useState<any>(null);

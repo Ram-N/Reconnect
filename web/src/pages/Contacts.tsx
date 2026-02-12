@@ -99,7 +99,7 @@ export function ContactsPage() {
             ? new Date(Date.now() + contactData.cadence_days * 24 * 60 * 60 * 1000).toISOString()
             : null;
 
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('contacts')
             .insert({
                 ...contactData,

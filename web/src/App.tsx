@@ -6,7 +6,7 @@ import { HomePage } from './pages/Home';
 import { ContactDetailPage } from './pages/ContactDetail';
 import { FollowUpsPage } from './pages/FollowUps';
 import { Home, Mic, CheckSquare, Phone } from 'lucide-react';
-import { UpdatePrompt } from './components';
+// import { UpdatePrompt } from './components';
 
 function NavBar() {
   const location = useLocation();
@@ -52,7 +52,7 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <NavBar />
-        <UpdatePrompt />
+        {/* <UpdatePrompt /> */}
       </div>
     </BrowserRouter>
   );
