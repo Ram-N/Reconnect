@@ -42,20 +42,20 @@ export default defineConfig({
         name: 'Reconnect',
         short_name: 'Reconnect',
         description: 'Personal CRM with voice capture',
-        theme_color: '#ffffff',
+        theme_color: '#3B82F6',
         background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
         icons: [
           {
-            src: 'pwa-192x192.png',
+            src: 'icon.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'icon.svg',
             sizes: '512x512',
-            type: 'image/png',
+            type: 'image/svg+xml',
             purpose: 'any maskable'
           }
         ]
