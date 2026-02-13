@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRecorder } from '../hooks/useRecorder';
 import { processAudio, saveInteraction, supabase, getContacts } from '../lib/api';
-import { Mic, Square, Upload, Loader2, X, Plus } from 'lucide-react';
+import { Mic, Square, Upload, Loader2, X, Plus, Pause, Play } from 'lucide-react';
 import { Button, Toast, TopNav } from '../components';
 import { getSelfContactId, getUnassignedContactId } from '../lib/specialContacts';
 
@@ -26,7 +26,7 @@ export function RecordPage() {
     const [searchParams] = useSearchParams();
     const isSelfNote = searchParams.get('self') === 'true';
     const navigate = useNavigate();
-    const { isRecording, duration, startRecording, stopRecording, audioBlob, resetRecording } = useRecorder();
+    const { isRecording, isPaused, duration, startRecording, pauseRecording, resumeRecording, stopRecording, audioBlob, resetRecording } = useRecorder();
     const [isProcessing, setIsProcessing] = useState(false);
     const [, setResult] = useState<any>(null);
     const [editableData, setEditableData] = useState<EditableData | null>(null);
@@ -37,9 +37,18 @@ export function RecordPage() {
     const [showContactSearch, setShowContactSearch] = useState(false);
     const [contactSearch, setContactSearch] = useState('');
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+    const [autoProcessCountdown, setAutoProcessCountdown] = useState<number | null>(null);
+    const autoProcessTimerRef = useRef<number | null>(null);
 
     useEffect(() => {
         loadUserAndContacts();
+
+        // Cleanup timer on unmount
+        return () => {
+            if (autoProcessTimerRef.current) {
+                clearInterval(autoProcessTimerRef.current);
+            }
+        };
     }, []);
 
     useEffect(() => {
@@ -68,6 +77,35 @@ export function RecordPage() {
 
     const handleStop = async () => {
         stopRecording();
+        // Start 5-second auto-process countdown
+        startAutoProcessCountdown();
+    };
+
+    const startAutoProcessCountdown = () => {
+        setAutoProcessCountdown(5);
+        let countdown = 5;
+
+        autoProcessTimerRef.current = window.setInterval(() => {
+            countdown -= 1;
+            setAutoProcessCountdown(countdown);
+
+            if (countdown <= 0) {
+                clearAutoProcessTimer();
+                handleProcess();
+            }
+        }, 1000);
+    };
+
+    const clearAutoProcessTimer = () => {
+        if (autoProcessTimerRef.current) {
+            clearInterval(autoProcessTimerRef.current);
+            autoProcessTimerRef.current = null;
+        }
+        setAutoProcessCountdown(null);
+    };
+
+    const cancelAutoProcess = () => {
+        clearAutoProcessTimer();
     };
 
     const handleProcess = async () => {
@@ -470,10 +508,17 @@ export function RecordPage() {
                             <span className="text-sm font-medium">Recording</span>
                         </div>
                     )}
+                    {isPaused && (
+                        <div className="flex items-center justify-center gap-2 text-orange-500">
+                            <Pause className="w-4 h-4" />
+                            <span className="text-sm font-medium">Paused</span>
+                        </div>
+                    )}
                 </div>
 
                 <div className="flex flex-col gap-4">
-                    {!isRecording && !audioBlob && (
+                    {/* Start Recording */}
+                    {!isRecording && !isPaused && !audioBlob && (
                         <button
                             onClick={startRecording}
                             className="w-full py-4 bg-red-500 text-white rounded-full text-lg font-semibold hover:bg-red-600 transition-colors flex items-center justify-center gap-2"
@@ -483,17 +528,77 @@ export function RecordPage() {
                         </button>
                     )}
 
+                    {/* Recording - Show Pause and Stop */}
                     {isRecording && (
-                        <button
-                            onClick={handleStop}
-                            className="w-full py-4 bg-gray-800 text-white rounded-full text-lg font-semibold hover:bg-gray-900 transition-colors flex items-center justify-center gap-2"
-                        >
-                            <Square className="w-6 h-6" />
-                            Stop Recording
-                        </button>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={pauseRecording}
+                                className="flex-1 py-4 bg-orange-500 text-white rounded-full text-lg font-semibold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Pause className="w-6 h-6" />
+                                Pause
+                            </button>
+                            <button
+                                onClick={handleStop}
+                                className="flex-1 py-4 bg-gray-800 text-white rounded-full text-lg font-semibold hover:bg-gray-900 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Square className="w-6 h-6" />
+                                Stop
+                            </button>
+                        </div>
                     )}
 
-                    {audioBlob && !isProcessing && (
+                    {/* Paused - Show Resume and Stop */}
+                    {isPaused && (
+                        <div className="flex gap-3">
+                            <button
+                                onClick={resumeRecording}
+                                className="flex-1 py-4 bg-green-500 text-white rounded-full text-lg font-semibold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Play className="w-6 h-6" />
+                                Resume
+                            </button>
+                            <button
+                                onClick={handleStop}
+                                className="flex-1 py-4 bg-gray-800 text-white rounded-full text-lg font-semibold hover:bg-gray-900 transition-colors flex items-center justify-center gap-2"
+                            >
+                                <Square className="w-6 h-6" />
+                                Stop
+                            </button>
+                        </div>
+                    )}
+
+                    {/* Auto-process countdown */}
+                    {audioBlob && autoProcessCountdown !== null && !isProcessing && (
+                        <div className="space-y-3">
+                            <audio src={URL.createObjectURL(audioBlob)} controls className="w-full" />
+                            <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
+                                <p className="text-blue-900 font-semibold mb-3">
+                                    Auto-processing in {autoProcessCountdown}...
+                                </p>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => {
+                                            clearAutoProcessTimer();
+                                            handleProcess();
+                                        }}
+                                        className="flex-1 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                                    >
+                                        Process Now
+                                    </button>
+                                    <button
+                                        onClick={cancelAutoProcess}
+                                        className="flex-1 py-3 bg-gray-200 text-gray-700 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
+                                    >
+                                        Cancel
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Manual process (after canceling auto-process) */}
+                    {audioBlob && autoProcessCountdown === null && !isProcessing && (
                         <div className="space-y-3">
                             <audio src={URL.createObjectURL(audioBlob)} controls className="w-full" />
                             <button
