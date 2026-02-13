@@ -87,11 +87,13 @@ export function RecordPage() {
 
         autoProcessTimerRef.current = window.setInterval(() => {
             countdown -= 1;
-            setAutoProcessCountdown(countdown);
 
             if (countdown <= 0) {
                 clearAutoProcessTimer();
+                // Auto-process immediately
                 handleProcess();
+            } else {
+                setAutoProcessCountdown(countdown);
             }
         }, 1000);
     };
@@ -569,12 +571,12 @@ export function RecordPage() {
                     )}
 
                     {/* Auto-process countdown */}
-                    {audioBlob && autoProcessCountdown !== null && !isProcessing && (
+                    {audioBlob && autoProcessCountdown !== null && autoProcessCountdown > 0 && !isProcessing && (
                         <div className="space-y-3">
                             <audio src={URL.createObjectURL(audioBlob)} controls className="w-full" />
                             <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-4">
                                 <p className="text-blue-900 font-semibold mb-3">
-                                    Auto-processing in {autoProcessCountdown}...
+                                    Auto-processing in {autoProcessCountdown} second{autoProcessCountdown !== 1 ? 's' : ''}...
                                 </p>
                                 <div className="flex gap-2">
                                     <button

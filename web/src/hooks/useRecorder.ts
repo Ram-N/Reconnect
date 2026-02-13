@@ -64,6 +64,13 @@ export function useRecorder() {
         if (mediaRecorder.current && mediaRecorder.current.state === 'recording') {
             mediaRecorder.current.pause();
             pauseTimeRef.current = Date.now();
+
+            // Stop the timer when paused
+            if (timerRef.current) {
+                clearInterval(timerRef.current);
+                timerRef.current = null;
+            }
+
             setState(prev => ({ ...prev, status: 'paused' }));
         }
     }, []);
@@ -72,6 +79,13 @@ export function useRecorder() {
         if (mediaRecorder.current && mediaRecorder.current.state === 'paused') {
             pausedDurationRef.current += Date.now() - pauseTimeRef.current;
             mediaRecorder.current.resume();
+
+            // Restart the timer when resuming
+            timerRef.current = window.setInterval(() => {
+                const elapsed = (Date.now() - startTimeRef.current - pausedDurationRef.current) / 1000;
+                setState(prev => ({ ...prev, duration: elapsed }));
+            }, 100);
+
             setState(prev => ({ ...prev, status: 'recording' }));
         }
     }, []);
