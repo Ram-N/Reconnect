@@ -5,6 +5,7 @@ import { ContactsPage } from './pages/Contacts';
 import { HomePage } from './pages/Home';
 import { ContactDetailPage } from './pages/ContactDetail';
 import { FollowUpsPage } from './pages/FollowUps';
+import { ToBeAssignedPage } from './pages/ToBeAssigned';
 import { Home, Mic, CheckSquare, Phone } from 'lucide-react';
 // import { UpdatePrompt } from './components';
 
@@ -49,6 +50,7 @@ function App() {
           <Route path="/follow-ups" element={<FollowUpsPage />} />
           <Route path="/contacts" element={<ContactsPage />} />
           <Route path="/contacts/:contactId" element={<ContactDetailPage />} />
+          <Route path="/to-be-assigned" element={<ToBeAssignedPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
         <NavBar />

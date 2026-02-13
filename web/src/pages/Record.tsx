@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRecorder } from '../hooks/useRecorder';
 import { processAudio, saveInteraction, supabase, getContacts } from '../lib/api';
 import { Mic, Square, Upload, Loader2, X, Plus } from 'lucide-react';
 import { Button, Toast, TopNav } from '../components';
+import { getSelfContactId, getUnassignedContactId } from '../lib/specialContacts';
 
 interface Contact {
     id: string;
@@ -15,12 +16,15 @@ interface EditableData {
     selectedContactIds: string[];
     people: Array<{ name: string; relation: string }>;
     topics: string[];
+    hashtags: string[];
     facts: Array<{ category: string; description: string }>;
     followups: Array<{ task: string; due_date: string }>;
 }
 
 export function RecordPage() {
     const { contactId } = useParams<{ contactId?: string }>();
+    const [searchParams] = useSearchParams();
+    const isSelfNote = searchParams.get('self') === 'true';
     const navigate = useNavigate();
     const { isRecording, duration, startRecording, stopRecording, audioBlob, resetRecording } = useRecorder();
     const [isProcessing, setIsProcessing] = useState(false);
@@ -76,12 +80,29 @@ export function RecordPage() {
             const data = await processAudio(audioBlob);
             setResult(data);
 
+            // Determine default contact assignment
+            let defaultContactIds: string[] = [];
+
+            if (isSelfNote) {
+                // Auto-assign to Self contact for Note to Self
+                const selfId = await getSelfContactId();
+                if (selfId) defaultContactIds = [selfId];
+            } else if (contactId) {
+                // Pre-assigned contact from URL
+                defaultContactIds = [contactId];
+            } else {
+                // Default to Unassigned for minimal friction
+                const unassignedId = await getUnassignedContactId();
+                if (unassignedId) defaultContactIds = [unassignedId];
+            }
+
             // Initialize editable data from AI result
             setEditableData({
                 transcript: data.transcript || '',
-                selectedContactIds: contactId ? [contactId] : [],
+                selectedContactIds: defaultContactIds,
                 people: data.extracted?.people_mentioned || [],
                 topics: data.extracted?.key_topics || [],
+                hashtags: data.extracted?.hashtags || [],
                 facts: data.extracted?.facts || [],
                 followups: data.extracted?.followups || [],
             });
@@ -98,15 +119,26 @@ export function RecordPage() {
             setError('You must be logged in to save.');
             return;
         }
-        if (!editableData || editableData.selectedContactIds.length === 0) {
-            setError('Please select at least one contact.');
+        if (!editableData) {
             return;
+        }
+
+        // If no contacts selected, default to Unassigned
+        let contactIds = editableData.selectedContactIds;
+        if (contactIds.length === 0) {
+            const unassignedId = await getUnassignedContactId();
+            if (unassignedId) {
+                contactIds = [unassignedId];
+            } else {
+                setError('Failed to get unassigned contact. Please select a contact.');
+                return;
+            }
         }
 
         setIsSaving(true);
         try {
             // Save interaction for each selected contact
-            for (const contactId of editableData.selectedContactIds) {
+            for (const contactId of contactIds) {
                 await saveInteraction({
                     owner_uid: user.id,
                     contact_id: contactId,
@@ -114,6 +146,7 @@ export function RecordPage() {
                     extracted: {
                         people_mentioned: editableData.people,
                         key_topics: editableData.topics,
+                        hashtags: editableData.hashtags,
                         facts: editableData.facts,
                         followups: editableData.followups,
                     },
@@ -180,6 +213,24 @@ export function RecordPage() {
         });
     };
 
+    const addHashtag = () => {
+        const hashtag = prompt('Enter hashtag (without #):');
+        if (hashtag && editableData) {
+            setEditableData({
+                ...editableData,
+                hashtags: [...editableData.hashtags, hashtag.replace(/^#/, '')]
+            });
+        }
+    };
+
+    const removeHashtag = (index: number) => {
+        if (!editableData) return;
+        setEditableData({
+            ...editableData,
+            hashtags: editableData.hashtags.filter((_, i) => i !== index)
+        });
+    };
+
     const toggleContact = (id: string) => {
         if (!editableData) return;
         const isSelected = editableData.selectedContactIds.includes(id);
@@ -210,7 +261,7 @@ export function RecordPage() {
 
                     {/* Contact Selection */}
                     <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
-                        <h3 className="font-semibold mb-3">Select Contact(s) *</h3>
+                        <h3 className="font-semibold mb-3">Select Contact(s) {!isSelfNote && <span className="text-gray-400 text-sm font-normal">(optional - defaults to "To Be Assigned")</span>}</h3>
                         <div className="space-y-2">
                             {editableData.selectedContactIds.map(id => {
                                 const contact = contacts.find(c => c.id === id);
@@ -340,6 +391,32 @@ export function RecordPage() {
                         </div>
                     </div>
 
+                    {/* Hashtags */}
+                    <div className="bg-white rounded-lg shadow-sm p-4 mb-4">
+                        <div className="flex items-center justify-between mb-3">
+                            <h3 className="font-semibold">Hashtags</h3>
+                            <button onClick={addHashtag} className="text-green-600 hover:text-green-700">
+                                <Plus className="w-5 h-5" />
+                            </button>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {editableData.hashtags.map((tag, idx) => (
+                                <span
+                                    key={idx}
+                                    className="inline-flex items-center gap-1 px-3 py-1 bg-green-50 text-green-700 rounded-full text-sm"
+                                >
+                                    #{tag}
+                                    <button onClick={() => removeHashtag(idx)} className="hover:bg-green-100 rounded-full p-0.5">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </span>
+                            ))}
+                            {editableData.hashtags.length === 0 && (
+                                <p className="text-sm text-gray-500 italic">No hashtags</p>
+                            )}
+                        </div>
+                    </div>
+
                     {/* Action Buttons */}
                     <div className="flex gap-3 sticky bottom-20 bg-gray-50 py-4">
                         <Button
@@ -352,7 +429,6 @@ export function RecordPage() {
                         <Button
                             onClick={handleSave}
                             isLoading={isSaving}
-                            disabled={editableData.selectedContactIds.length === 0}
                             className="flex-1"
                         >
                             Save Note

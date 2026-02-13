@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mic, Search, Calendar, MessageSquare, Users, TrendingUp } from 'lucide-react';
+import { Mic, Search, Calendar, MessageSquare, Users, TrendingUp, FileQuestion } from 'lucide-react';
 import { Button, ContactCard, EmptyState, TopNav } from '../components';
 import { supabase, getUpNext } from '../lib/api';
+import { ensureSpecialContacts, getUnassignedContactId } from '../lib/specialContacts';
 
 interface RecentInteraction {
     id: string;
@@ -24,13 +25,14 @@ interface UpcomingContact {
 interface Stats {
     totalContacts: number;
     notesThisMonth: number;
+    unassignedNotes: number;
 }
 
 export function HomePage() {
     const navigate = useNavigate();
     const [upcomingContacts, setUpcomingContacts] = useState<UpcomingContact[]>([]);
     const [recentInteractions, setRecentInteractions] = useState<RecentInteraction[]>([]);
-    const [stats, setStats] = useState<Stats>({ totalContacts: 0, notesThisMonth: 0 });
+    const [stats, setStats] = useState<Stats>({ totalContacts: 0, notesThisMonth: 0, unassignedNotes: 0 });
     const [isLoading, setIsLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
 
@@ -62,6 +64,9 @@ export function HomePage() {
                 setIsLoading(false);
                 return;
             }
+
+            // Ensure special contacts exist
+            await ensureSpecialContacts();
 
             // Load upcoming check-ins (next 3)
             const upcoming = await getUpNext();
@@ -102,9 +107,21 @@ export function HomePage() {
                 .select('id')
                 .gte('occurred_at', startOfMonth.toISOString());
 
+            // Count unassigned notes
+            const unassignedId = await getUnassignedContactId();
+            let unassignedCount = 0;
+            if (unassignedId) {
+                const { data: unassigned } = await supabase
+                    .from('interactions')
+                    .select('id')
+                    .eq('contact_id', unassignedId);
+                unassignedCount = unassigned?.length || 0;
+            }
+
             setStats({
                 totalContacts: contacts?.length || 0,
                 notesThisMonth: monthInteractions?.length || 0,
+                unassignedNotes: unassignedCount,
             });
         } catch (error) {
             console.error('Failed to load dashboard:', error);
@@ -168,7 +185,7 @@ export function HomePage() {
                 </div>
 
                 {/* Main Action Buttons */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <button
                         onClick={() => navigate('/record')}
                         className="group relative bg-gradient-to-br from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-2xl p-8 shadow-lg hover:shadow-xl transition-all active:scale-95"
@@ -192,6 +209,20 @@ export function HomePage() {
                             </div>
                             <h2 className="text-2xl font-bold mb-2">Look Up Notes</h2>
                             <p className="text-purple-100 text-sm">Browse contacts and view conversation history</p>
+                        </div>
+                    </button>
+                </div>
+
+                {/* Note to Self Button - Smaller, centered */}
+                <div className="flex justify-center mb-8">
+                    <button
+                        onClick={() => navigate('/record?self=true')}
+                        className="group bg-gradient-to-br from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white rounded-xl px-6 py-4 shadow-md hover:shadow-lg transition-all active:scale-95 flex items-center gap-3"
+                    >
+                        <MessageSquare className="w-5 h-5" />
+                        <div className="text-left">
+                            <p className="font-semibold">Note to Self</p>
+                            <p className="text-xs text-green-100">Quick personal note with hashtags</p>
                         </div>
                     </button>
                 </div>
@@ -220,6 +251,25 @@ export function HomePage() {
                             </div>
                         </div>
                     </div>
+                    {stats.unassignedNotes > 0 && (
+                        <div
+                            onClick={() => navigate('/to-be-assigned')}
+                            className="bg-white rounded-lg shadow-sm p-4 cursor-pointer hover:shadow-md transition-shadow col-span-2"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-orange-100 rounded-lg flex items-center justify-center">
+                                    <FileQuestion className="w-5 h-5 text-orange-600" />
+                                </div>
+                                <div className="flex-1">
+                                    <p className="text-2xl font-bold text-gray-900">{stats.unassignedNotes}</p>
+                                    <p className="text-xs text-gray-500">Notes to be assigned</p>
+                                </div>
+                                <button className="text-sm text-orange-600 hover:text-orange-700 font-medium">
+                                    Assign →
+                                </button>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Upcoming Check-ins */}
