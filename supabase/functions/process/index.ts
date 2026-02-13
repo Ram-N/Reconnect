@@ -47,13 +47,16 @@ serve(async (req) => {
         const transcript = sttResult.text
 
         // 2. LLM: Extract structured data
-        const systemPrompt = `You extract structured facts from personal call transcripts. 
+        const systemPrompt = `You extract structured facts from personal call transcripts.
 Return STRICT JSON matching the provided schema. No extra keys, no commentary.
-If a field is unknown, use null. Dates ISO-8601 when possible.`
+If a field is unknown, use null. Dates ISO-8601 when possible.
+For hashtags: extract any words spoken with "hashtag" prefix (e.g. "hashtag books" -> "books"),
+or words that sound like category tags (e.g. "things to read" -> ["reading"]). Return as lowercase strings without # symbol.`
 
         const schema = {
             "people_mentioned": [{ "name": "string", "relation": "string|null", "org_school": "string|null", "location": "string|null" }],
             "key_topics": ["string"],
+            "hashtags": ["string"],
             "facts": [{ "type": "string", "who": "string|null", "org": "string|null", "role": "string|null", "when": "string|null", "to": "string|null", "from": "string|null" }],
             "followups": [{ "what": "string", "due": "string|null" }],
             "checkin_hint_days": "number|null"

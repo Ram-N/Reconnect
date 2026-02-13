@@ -49,9 +49,15 @@ async def process_audio(file: UploadFile = File(...)):
         
         # 3. TODO: Call LLM (Ollama or OpenAI)
         # extracted = run_llm_extraction(transcript)
+        # For now, extract hashtags from transcript as a simple regex match
+        import re
+        hashtag_pattern = r'#(\w+)'
+        hashtags = re.findall(hashtag_pattern, transcript)
+
         extracted = {
             "people_mentioned": [{"name": "Backend Bob", "relation": "Server Admin"}],
             "key_topics": ["API", "Python", "FastAPI"],
+            "hashtags": hashtags if hashtags else [],
             "facts": [{"type": "status", "who": "API", "role": "Online"}],
             "followups": [{"what": "Implement actual Whisper calls", "due": "Soon"}],
             "checkin_hint_days": 7
