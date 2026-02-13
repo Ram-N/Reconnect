@@ -96,9 +96,9 @@ export async function getSelfContactId(): Promise<string | null> {
     .from('contacts')
     .select('id')
     .eq('display_name', SPECIAL_CONTACTS.SELF)
-    .single();
+    .limit(1);
 
-  return data?.id || null;
+  return data?.[0]?.id || null;
 }
 
 /**
@@ -109,9 +109,9 @@ export async function getUnassignedContactId(): Promise<string | null> {
     .from('contacts')
     .select('id')
     .eq('display_name', SPECIAL_CONTACTS.UNASSIGNED)
-    .single();
+    .limit(1);
 
-  return data?.id || null;
+  return data?.[0]?.id || null;
 }
 
 /**

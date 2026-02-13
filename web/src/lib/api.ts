@@ -45,6 +45,7 @@ export async function getContacts() {
     const { data, error } = await supabase
         .from('contacts')
         .select('*')
+        .not('display_name', 'in', '("__Self","__Unassigned")')
         .order('display_name');
 
     if (error) throw error;

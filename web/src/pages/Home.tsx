@@ -4,6 +4,7 @@ import { Mic, Search, Calendar, MessageSquare, Users, TrendingUp, FileQuestion }
 import { Button, ContactCard, EmptyState, TopNav } from '../components';
 import { supabase, getUpNext } from '../lib/api';
 import { ensureSpecialContacts, getUnassignedContactId } from '../lib/specialContacts';
+import { cleanupDuplicateSpecialContacts } from '../lib/cleanupSpecialContacts';
 
 interface RecentInteraction {
     id: string;
@@ -65,6 +66,9 @@ export function HomePage() {
                 return;
             }
 
+            // Cleanup duplicate special contacts (one-time fix)
+            await cleanupDuplicateSpecialContacts();
+
             // Ensure special contacts exist
             await ensureSpecialContacts();
 
@@ -93,10 +97,11 @@ export function HomePage() {
                 })));
             }
 
-            // Load stats
+            // Load stats (exclude special contacts)
             const { data: contacts } = await supabase
                 .from('contacts')
-                .select('id');
+                .select('id')
+                .not('display_name', 'in', '("__Self","__Unassigned")');
 
             const startOfMonth = new Date();
             startOfMonth.setDate(1);
