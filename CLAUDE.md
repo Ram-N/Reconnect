@@ -11,6 +11,7 @@ Reconnect is a privacy-minded personal CRM that helps users stay in touch with f
 - **Database**: Supabase (Postgres with Row-Level Security)
 - **Backend**: FastAPI (Python) for AI processing + Supabase Edge Functions
 - **AI**: (Planned) OpenAI Whisper (STT) + LLM for extraction
+- **Authentication**: Google OAuth via Supabase Auth (email/password fallback available)
 
 ## Key Commands
 
@@ -51,7 +52,8 @@ uvicorn main:app --reload
 1. Create a Supabase project at https://supabase.com
 2. Run schema: `supabase/schema.sql` in SQL Editor
 3. Run policies: `supabase/policies.sql` in SQL Editor
-4. Create `.env` in `web/` directory:
+4. Set up Google OAuth: Follow `docs/GOOGLE_OAUTH_SETUP.md`
+5. Create `.env` in `web/` directory:
    ```env
    VITE_SUPABASE_URL=your_project_url
    VITE_SUPABASE_ANON_KEY=your_anon_key

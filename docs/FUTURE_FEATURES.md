@@ -128,9 +128,63 @@ When reviewing extracted data from a voice note, intelligently suggest existing 
 
 ---
 
+### 4. Quick Add Contact from Note Review Screen
+**Priority**: High
+**Status**: Planned
+**Requested**: 2026-02-12
+
+**Description**:
+Allow users to create a new contact on-the-fly while reviewing a voice note, without having to abandon the note and navigate to the Contacts page. This prevents the frustrating workflow of recording a note, realizing the contact doesn't exist, and having to discard the note.
+
+**Requirements**:
+- "Create New Contact" button/link in contact selection dropdown on Record/Review page
+- Inline contact creation form (modal or expandable section)
+- Quick form with essential fields:
+  - Name (required)
+  - Cadence (optional, default to 30 or 90 days)
+  - Phone (optional)
+  - Email (optional)
+- "Save & Select" button to:
+  1. Create the contact in database
+  2. Automatically select it for the current note
+  3. Close modal and return to note review
+- Validation and error handling
+- Cancel option returns to contact selection without creating
+
+**User Flow**:
+1. User records voice note about "Had coffee with Maria"
+2. On review screen, opens contact dropdown
+3. "Maria" is not in the list
+4. Clicks "**+ Create New Contact**" button
+5. Mini-form appears with Name pre-filled as "Maria" (from AI extraction)
+6. User adds cadence (30 days) and optional phone/email
+7. Clicks "Save & Select"
+8. Contact is created and auto-selected for this note
+9. User continues reviewing and saves the interaction
+
+**Technical Considerations**:
+- Reuse existing contact creation logic from Contacts page
+- Add `owner_uid` automatically (same as Contacts.tsx fix)
+- Update contact dropdown to reflect newly created contact
+- Pre-populate name from "people mentioned" if available
+- Consider autosave draft of note to prevent data loss
+
+**Related Files**:
+- `web/src/pages/Record.tsx` - Add quick create button/modal
+- `web/src/components/QuickAddContactModal.tsx` - New inline contact form component
+- Reuse logic from `web/src/components/AddContactModal.tsx`
+
+**UX Improvement**:
+This solves a major pain point where users have to choose between:
+- ❌ Abandoning their note to create a contact
+- ❌ Saving the note without a contact link
+- ✅ Creating the contact instantly and continuing the workflow
+
+---
+
 ## Backlog
 
-### 4. Export Contacts to Excel/CSV
+### 5. Export Contacts to Excel/CSV
 **Priority**: Low
 **Status**: Planned
 
@@ -138,7 +192,7 @@ Allow users to download their contacts as Excel or CSV for backup or sharing.
 
 ---
 
-### 5. Contact Tags/Categories
+### 6. Contact Tags/Categories
 **Priority**: Medium
 **Status**: Planned
 
@@ -146,7 +200,7 @@ Add tags to contacts (e.g., "Family", "Work", "College Friends") for better orga
 
 ---
 
-### 6. Real AI Processing (Replace Mocks)
+### 7. Real AI Processing (Replace Mocks)
 **Priority**: High
 **Status**: Planned
 
@@ -159,7 +213,7 @@ Implement actual Whisper STT and LLM extraction to replace placeholder mock data
 
 ---
 
-### 7. Contact Photo Upload
+### 8. Contact Photo Upload
 **Priority**: Low
 **Status**: Planned
 
@@ -167,7 +221,7 @@ Allow users to add profile photos for contacts.
 
 ---
 
-### 8. Recurring Reminders & Notifications
+### 9. Recurring Reminders & Notifications
 **Priority**: Medium
 **Status**: Planned
 
