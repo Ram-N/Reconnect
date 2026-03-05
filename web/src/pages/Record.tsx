@@ -271,15 +271,28 @@ export function RecordPage() {
         });
     };
 
-    const toggleContact = (id: string) => {
+    const toggleContact = async (id: string) => {
         if (!editableData) return;
         const isSelected = editableData.selectedContactIds.includes(id);
-        setEditableData({
-            ...editableData,
-            selectedContactIds: isSelected
-                ? editableData.selectedContactIds.filter(cid => cid !== id)
-                : [...editableData.selectedContactIds, id]
-        });
+
+        if (isSelected) {
+            // Removing a contact
+            setEditableData({
+                ...editableData,
+                selectedContactIds: editableData.selectedContactIds.filter(cid => cid !== id)
+            });
+        } else {
+            // Adding a contact - remove Unassigned if present
+            const unassignedId = await getUnassignedContactId();
+            const filteredIds = unassignedId
+                ? editableData.selectedContactIds.filter(cid => cid !== unassignedId)
+                : editableData.selectedContactIds;
+
+            setEditableData({
+                ...editableData,
+                selectedContactIds: [...filteredIds, id]
+            });
+        }
     };
 
     const formatDuration = (sec: number) => {

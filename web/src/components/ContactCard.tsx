@@ -7,6 +7,7 @@ interface ContactCardProps {
     lastContact?: string;
     nextCheckin?: string;
     phone?: string;
+    noteCount?: number;
     variant?: 'list' | 'compact';
     onClick?: () => void;
 }
@@ -17,6 +18,7 @@ export function ContactCard({
     lastContact,
     nextCheckin,
     phone,
+    noteCount,
     variant = 'list',
     onClick,
 }: ContactCardProps) {
@@ -34,11 +36,24 @@ export function ContactCard({
     };
 
     const content = (
-        <div className={`bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow ${variant === 'list' ? 'p-4' : 'p-3'}`}>
-            <div className="flex items-start gap-3">
+        <div className={`bg-white rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 cursor-pointer hover:-translate-y-0.5 active:translate-y-0 border border-gray-100 ${variant === 'list' ? 'p-4' : 'p-3'}`}>
+            <div className="flex items-start gap-4">
+                {/* Note Count - Leftmost */}
+                <div className="flex-shrink-0 flex flex-col items-center justify-center min-w-[40px]">
+                    <div className="text-2xl font-bold text-blue-600">
+                        {noteCount ?? 0}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                        {noteCount === 1 ? 'note' : 'notes'}
+                    </div>
+                </div>
+
+                {/* Avatar */}
                 <div className="flex-shrink-0 w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center">
                     <User className="w-6 h-6 text-blue-600" />
                 </div>
+
+                {/* Contact Info */}
                 <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 truncate">{name}</h3>
                     {phone && variant === 'list' && (

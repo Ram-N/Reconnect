@@ -11,6 +11,7 @@ interface Contact {
     primary_email?: string;
     next_checkin_date?: string;
     last_interaction?: string;
+    note_count?: number;
 }
 
 type SortOption = 'name' | 'recent' | 'due';
@@ -57,19 +58,19 @@ export function ContactsPage() {
 
             if (contactsError) throw contactsError;
 
-            // Get last interaction date for each contact
+            // Get last interaction date and count for each contact
             const contactsWithInteractions = await Promise.all(
                 (contactsData || []).map(async (contact) => {
-                    const { data: interactions } = await supabase
+                    const { data: interactions, count } = await supabase
                         .from('interactions')
-                        .select('occurred_at')
+                        .select('occurred_at', { count: 'exact' })
                         .eq('contact_id', contact.id)
-                        .order('occurred_at', { ascending: false })
-                        .limit(1);
+                        .order('occurred_at', { ascending: false });
 
                     return {
                         ...contact,
-                        last_interaction: interactions?.[0]?.occurred_at
+                        last_interaction: interactions?.[0]?.occurred_at,
+                        note_count: count || 0
                     };
                 })
             );
@@ -345,6 +346,7 @@ export function ContactsPage() {
                                 phone={contact.primary_phone}
                                 lastContact={contact.last_interaction}
                                 nextCheckin={contact.next_checkin_date}
+                                noteCount={contact.note_count}
                             />
                         ))}
                     </div>
