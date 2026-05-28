@@ -39,7 +39,9 @@ Then open: **http://localhost:5173**
 ## Environment
 
 - Frontend `.env` is in `web/.env` (gitignored)
-- Groq API key stored in Supabase secrets
+- API keys stored in Supabase secrets (set via dashboard or CLI):
+  - `NIM_API_KEY1` — NVIDIA NIM (primary LLM)
+  - `GROQ_API_KEY1` — Groq (STT + LLM fallback)
 - Database uses Row-Level Security (RLS)
 
 ## Troubleshooting
