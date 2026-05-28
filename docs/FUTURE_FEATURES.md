@@ -20,15 +20,6 @@ Allow users to modify a saved interaction — transcript, people, topics, facts,
 
 ---
 
-### 2. Quick Add Contact from Review Screen
-Create a new contact inline while reviewing a note, without losing the recording.
-
-- "＋ Create New Contact" option in the contact dropdown on the Record/review screen
-- Mini-form pre-filled with name from AI extraction
-- On save: contact is created and auto-selected
-- Key files: `Record.tsx`, new `QuickAddContactModal.tsx` (reuse `AddContactModal.tsx` logic)
-
----
 
 ### 3. Smart Contact Suggestions
 When reviewing a note, suggest existing contacts based on names the AI extracted.
@@ -139,5 +130,6 @@ Add a profile photo to a contact.
 - ✅ ToBeAssigned queue for unlinked interactions
 - ✅ Note to Self contact
 - ✅ Note counts on contact cards
+- ✅ Quick add contact from review screen (pre-filled from AI extraction, auto-selected on save)
 - ✅ Google OAuth authentication
 - ✅ PWA — installable on Android/iOS
