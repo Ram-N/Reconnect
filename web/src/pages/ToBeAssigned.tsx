@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, getContacts } from '../lib/api';
-import { getUnassignedContactId, SPECIAL_CONTACTS } from '../lib/specialContacts';
+import { getUnassignedContactId, getSelfContactId, SPECIAL_CONTACTS } from '../lib/specialContacts';
 import { TopNav, Button, EmptyState } from '../components';
 import { FileQuestion, UserPlus, Calendar, Tag } from 'lucide-react';
 
@@ -58,13 +58,16 @@ export function ToBeAssignedPage() {
             if (error) throw error;
             setNotes(interactions || []);
 
-            // Load contacts for assignment dropdown
-            const contactsData = await getContacts();
-            // Filter out special contacts
+            // Load contacts for assignment dropdown (include Self, exclude Unassigned)
+            const [contactsData, selfId] = await Promise.all([getContacts(), getSelfContactId()]);
             const regularContacts = contactsData?.filter(
-                c => c.display_name !== SPECIAL_CONTACTS.SELF && c.display_name !== SPECIAL_CONTACTS.UNASSIGNED
+                c => c.display_name !== SPECIAL_CONTACTS.UNASSIGNED
             ) || [];
-            setContacts(regularContacts);
+            // Rename __Self to "Note to Self" for display
+            const displayContacts = regularContacts.map(c =>
+                c.id === selfId ? { ...c, display_name: 'Note to Self' } : c
+            );
+            setContacts(displayContacts);
         } catch (error) {
             console.error('Failed to load unassigned notes:', error);
         } finally {
@@ -114,11 +117,13 @@ export function ToBeAssignedPage() {
             await assignToContact(noteId, newContact.id);
 
             // Refresh contacts list
-            const contactsData = await getContacts();
-            const regularContacts = contactsData?.filter(
-                c => c.display_name !== SPECIAL_CONTACTS.SELF && c.display_name !== SPECIAL_CONTACTS.UNASSIGNED
+            const [refreshedContacts, selfId] = await Promise.all([getContacts(), getSelfContactId()]);
+            const regularContacts = refreshedContacts?.filter(
+                c => c.display_name !== SPECIAL_CONTACTS.UNASSIGNED
             ) || [];
-            setContacts(regularContacts);
+            setContacts(regularContacts.map(c =>
+                c.id === selfId ? { ...c, display_name: 'Note to Self' } : c
+            ));
         } catch (error) {
             console.error('Failed to create contact:', error);
             alert('Failed to create contact');
