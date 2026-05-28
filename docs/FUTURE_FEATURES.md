@@ -1,262 +1,143 @@
-# Future Features & Enhancements
+# Future Features
 
-This document tracks planned features and improvements for Reconnect.
+**Last updated**: 2026-05-28
 
-## Planned Features
-
-### 1. Bulk Contact Upload (Excel/CSV Import)
-**Priority**: Medium
-**Status**: Planned
-**Requested**: 2026-02-12
-
-**Description**:
-Allow users to upload an Excel or CSV file to bulk import contacts instead of adding them one by one.
-
-**Requirements**:
-- Support Excel (.xlsx) and CSV (.csv) file formats
-- File upload interface with drag-and-drop
-- Column mapping UI (map spreadsheet columns to contact fields)
-- Validation and error reporting (duplicate names, invalid data)
-- Preview before import (show first 5-10 rows)
-- Progress indicator for large imports
-- Option to update existing contacts or skip duplicates
-
-**Expected Columns**:
-- Name (required)
-- Phone
-- Email
-- Cadence (days)
-- Notes
-
-**Technical Considerations**:
-- Frontend: Use `xlsx` library for Excel parsing, native CSV parsing
-- Backend: Batch insert with Supabase (chunks of 100-500 contacts)
-- Validation: Check for required fields, phone/email format
-- RLS: Ensure all imports have correct `owner_uid`
-
-**Related Files**:
-- `web/src/pages/Contacts.tsx` - Add import button
-- `web/src/components/BulkImportModal.tsx` - New component for upload UI
-- `web/src/lib/importHelpers.ts` - New file for parsing/validation logic
+This is the consolidated backlog of features not yet implemented. Items already shipped
+(voice recording, AI processing, contacts, UpNext, follow-ups, hashtags, PWA, Google OAuth,
+Note to Self, ToBeAssigned) have been removed.
 
 ---
 
-### 2. Edit Existing Notes/Interactions
-**Priority**: High
-**Status**: Planned
-**Requested**: 2026-02-12
+## High Priority
 
-**Description**:
-Allow users to go back to previously recorded notes/interactions and edit them. Currently, once a note is saved, there's no way to modify the transcript, extracted data, or metadata.
+### 1. Edit Existing Notes
+Allow users to modify a saved interaction — transcript, people, topics, facts, follow-ups.
 
-**Requirements**:
-- Edit button on interaction cards (contact detail page, home page recent notes)
-- Modal or page for editing interaction details
-- Ability to edit:
-  - Transcript text
-  - Summary
-  - People mentioned (add/remove/edit)
-  - Key topics (add/remove/edit)
-  - Facts (add/remove/edit)
-  - Follow-ups (add/remove/edit/mark complete)
-  - Occurred date/time
-- Save/Cancel buttons with confirmation for discarding changes
-- Show "Last edited" timestamp
-- Validation to prevent saving empty/invalid data
-
-**Technical Considerations**:
-- Add `updated_at` timestamp column to `interactions` table
-- Update RLS policies to allow UPDATE on interactions
-- Frontend: Create `EditInteractionModal.tsx` or `EditInteractionPage.tsx`
-- Consider adding edit history/audit log (optional, future enhancement)
-- Handle concurrent edits (optimistic locking)
-
-**Related Files**:
-- `web/src/pages/ContactDetail.tsx` - Add edit button to interaction cards
-- `web/src/pages/Home.tsx` - Add edit button to recent notes
-- `web/src/components/EditInteractionModal.tsx` - New component for editing UI
-- `web/src/lib/api.ts` - Add `updateInteraction()` function
-- `supabase/schema.sql` - Add `updated_at` column (optional migration)
+- Edit button on interaction cards (contact detail + home page)
+- Editable fields: transcript, summary, people mentioned, key topics, facts, follow-ups, occurred date
+- Requires `updated_at` column on `interactions` table
+- Key files: `ContactDetail.tsx`, `Home.tsx`, new `EditInteractionModal.tsx`, `api.ts`
 
 ---
 
-### 3. Smart Contact Suggestions from Note Content
-**Priority**: High
-**Status**: Planned
-**Requested**: 2026-02-12
+### 2. Quick Add Contact from Review Screen
+Create a new contact inline while reviewing a note, without losing the recording.
 
-**Description**:
-When reviewing extracted data from a voice note, intelligently suggest existing contacts based on the people mentioned in the transcript, or allow users to create new contacts. Instead of manually selecting contacts, the system should analyze names mentioned and offer smart suggestions.
-
-**Requirements**:
-- Analyze transcript and extracted "people mentioned" for name matching
-- Show dropdown with suggested existing contacts that match mentioned names
-- Fuzzy matching for similar names (e.g., "Sarah" matches "Sarah Johnson")
-- Allow multiple contact selection if multiple people mentioned
-- Option to "Create New Contact" if no match found
-- Option to manually type/search if suggestions aren't relevant
-- Show confidence level for matches (High/Medium/Low)
-- Allow user to confirm/reject suggestions before saving
-
-**User Flow**:
-1. User records voice note mentioning "Had coffee with Sarah today"
-2. AI extracts "Sarah" as a person mentioned
-3. System suggests existing contacts:
-   - "Sarah Johnson" (High confidence)
-   - "Sarah Williams" (Medium confidence)
-4. User selects correct contact or clicks "Create New Contact"
-5. Interaction is linked to selected/new contact
-
-**Technical Considerations**:
-- Use fuzzy string matching library (e.g., `fuse.js` or Levenshtein distance)
-- Search against `contacts.display_name` and `people.name` tables
-- Consider using Supabase full-text search or `pg_trgm` extension
-- Show suggestions in autocomplete/combobox component
-- Cache contact list for faster matching
-- Handle edge cases: multiple matches, no matches, ambiguous names
-
-**Related Files**:
-- `web/src/pages/Record.tsx` - Replace simple contact dropdown with smart suggestion UI
-- `web/src/components/ContactSuggestionInput.tsx` - New autocomplete component
-- `web/src/lib/contactMatcher.ts` - New file for fuzzy matching logic
-- `web/src/lib/api.ts` - Add function to search contacts by name
-
-**Future Enhancements**:
-- Learn from user selections to improve matching over time
-- Use context clues (location, topics) to improve suggestions
-- Suggest contacts based on interaction frequency/recency
+- "＋ Create New Contact" option in the contact dropdown on the Record/review screen
+- Mini-form pre-filled with name from AI extraction
+- On save: contact is created and auto-selected
+- Key files: `Record.tsx`, new `QuickAddContactModal.tsx` (reuse `AddContactModal.tsx` logic)
 
 ---
 
-### 4. Quick Add Contact from Note Review Screen
-**Priority**: High
-**Status**: Planned
-**Requested**: 2026-02-12
+### 3. Smart Contact Suggestions
+When reviewing a note, suggest existing contacts based on names the AI extracted.
 
-**Description**:
-Allow users to create a new contact on-the-fly while reviewing a voice note, without having to abandon the note and navigate to the Contacts page. This prevents the frustrating workflow of recording a note, realizing the contact doesn't exist, and having to discard the note.
-
-**Requirements**:
-- "Create New Contact" button/link in contact selection dropdown on Record/Review page
-- Inline contact creation form (modal or expandable section)
-- Quick form with essential fields:
-  - Name (required)
-  - Cadence (optional, default to 30 or 90 days)
-  - Phone (optional)
-  - Email (optional)
-- "Save & Select" button to:
-  1. Create the contact in database
-  2. Automatically select it for the current note
-  3. Close modal and return to note review
-- Validation and error handling
-- Cancel option returns to contact selection without creating
-
-**User Flow**:
-1. User records voice note about "Had coffee with Maria"
-2. On review screen, opens contact dropdown
-3. "Maria" is not in the list
-4. Clicks "**+ Create New Contact**" button
-5. Mini-form appears with Name pre-filled as "Maria" (from AI extraction)
-6. User adds cadence (30 days) and optional phone/email
-7. Clicks "Save & Select"
-8. Contact is created and auto-selected for this note
-9. User continues reviewing and saves the interaction
-
-**Technical Considerations**:
-- Reuse existing contact creation logic from Contacts page
-- Add `owner_uid` automatically (same as Contacts.tsx fix)
-- Update contact dropdown to reflect newly created contact
-- Pre-populate name from "people mentioned" if available
-- Consider autosave draft of note to prevent data loss
-
-**Related Files**:
-- `web/src/pages/Record.tsx` - Add quick create button/modal
-- `web/src/components/QuickAddContactModal.tsx` - New inline contact form component
-- Reuse logic from `web/src/components/AddContactModal.tsx`
-
-**UX Improvement**:
-This solves a major pain point where users have to choose between:
-- ❌ Abandoning their note to create a contact
-- ❌ Saving the note without a contact link
-- ✅ Creating the contact instantly and continuing the workflow
+- Fuzzy match extracted `people_mentioned` names against `contacts.display_name`
+- Show ranked suggestions (High/Medium confidence)
+- Fall back to manual search if no match
+- Library: `fuse.js` or similar
+- Key files: `Record.tsx`, new `ContactSuggestionInput.tsx`, new `lib/contactMatcher.ts`
 
 ---
 
-## Backlog
+## Medium Priority
 
-### 5. Export Contacts to Excel/CSV
-**Priority**: Low
-**Status**: Planned
+### 4. Recurring Reminders & Notifications
+Notify users when a check-in is due, so they don't have to check the UpNext page manually.
 
-Allow users to download their contacts as Excel or CSV for backup or sharing.
-
----
-
-### 6. Contact Tags/Categories
-**Priority**: Medium
-**Status**: Planned
-
-Add tags to contacts (e.g., "Family", "Work", "College Friends") for better organization.
+- Email notifications via Supabase scheduled Edge Function (nightly cron)
+- Optional: browser push notifications via Web Push API
+- Configurable: daily digest vs. per-contact alert
 
 ---
 
-### 7. Real AI Processing (Replace Mocks)
-**Priority**: High
-**Status**: Planned
+### 5. Contact Tags / Categories
+Group contacts by label (e.g. Family, Work, College Friends) for filtering.
 
-Implement actual Whisper STT and LLM extraction to replace placeholder mock data.
-
-**Components**:
-- Whisper STT integration (OpenAI API or local Faster-Whisper)
-- LLM extraction (OpenAI/Groq/Together API)
-- Update `supabase/functions/process/index.ts` and `server/main.py`
+- Tag field on contacts (array of strings)
+- Filter by tag on Contacts and UpNext pages
+- Reuses hashtag UI patterns already in place
 
 ---
 
-### 8. Contact Photo Upload
-**Priority**: Low
-**Status**: Planned
+### 6. Bulk Contact Import (CSV/Excel)
+Upload a spreadsheet to import contacts instead of adding one by one.
 
-Allow users to add profile photos for contacts.
-
----
-
-### 9. Recurring Reminders & Notifications
-**Priority**: Medium
-**Status**: Planned
-
-Send email/push notifications when check-ins are due.
+- Drag-and-drop upload, column mapping UI, preview before import
+- Validate required fields, handle duplicates
+- Library: `xlsx` for Excel parsing
+- Key files: `Contacts.tsx`, new `BulkImportModal.tsx`, new `lib/importHelpers.ts`
 
 ---
 
-## Template for New Features
+### 7. Rapid Recall Card
+A 30-second pre-call summary card for a contact — last 3 highlights, open follow-ups, key facts.
 
-When adding a new feature request, use this template:
-
-```markdown
-### Feature Name
-**Priority**: High/Medium/Low
-**Status**: Planned/In Progress/Completed
-**Requested**: YYYY-MM-DD
-
-**Description**:
-Brief description of the feature
-
-**Requirements**:
-- Requirement 1
-- Requirement 2
-
-**Technical Considerations**:
-- Technical detail 1
-- Technical detail 2
-
-**Related Files**:
-- File path 1
-- File path 2
-```
+- Accessible from contact detail or UpNext with one tap
+- Read-only condensed view: last interaction summary, people, pending follow-ups
+- No new data model needed — derived from existing interactions
 
 ---
 
-## Completed Features
+### 8. Shared Household / Multi-user
+Let two users (e.g. spouses) see and add to the same set of contacts and interactions.
 
-*(None yet - MVP in progress)*
+- `households` table mapping multiple `owner_uid` values to one `household_id`
+- RLS policies updated to allow access by household membership
+- Invite flow (email invite to join household)
+
+---
+
+## Low Priority
+
+### 9. Semantic Search
+Search interactions by meaning, not just keywords (e.g. "when did we talk about her job?").
+
+- pgvector extension already in schema (`interaction_embeddings` table)
+- Generate embeddings at save time via NIM or a small embedding model
+- Search UI on Contacts or a global search page
+
+---
+
+### 10. Google Contacts Import
+Seed the contact list from an existing Google Contacts account.
+
+- OAuth scope: `contacts.readonly`
+- Map Google fields → Reconnect contact fields
+- One-time import with duplicate detection
+
+---
+
+### 11. Export Contacts (CSV)
+Download all contacts as a CSV for backup or migration.
+
+- Single button on Contacts page
+- Exports: name, phone, email, cadence, last interaction date
+
+---
+
+### 12. Contact Photo Upload
+Add a profile photo to a contact.
+
+- Upload to Supabase Storage with RLS
+- Display in contact cards and detail page
+- Low impact on core workflows
+
+---
+
+## Completed (for reference)
+
+- ✅ Voice recording with pause/resume and auto-process countdown
+- ✅ AI transcription — Groq Whisper large-v3
+- ✅ Structured extraction — NIM Llama 3.3 70B (primary), Groq (fallback)
+- ✅ Hashtag extraction from speech
+- ✅ Contacts page with search and cadence scheduling
+- ✅ Contact detail page with interaction timeline
+- ✅ UpNext page (contacts due for check-in)
+- ✅ Follow-ups page with completion tracking
+- ✅ ToBeAssigned queue for unlinked interactions
+- ✅ Note to Self contact
+- ✅ Note counts on contact cards
+- ✅ Google OAuth authentication
+- ✅ PWA — installable on Android/iOS
