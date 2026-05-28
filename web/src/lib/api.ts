@@ -41,6 +41,26 @@ export async function saveInteraction(interaction: any) {
     return data;
 }
 
+export async function saveFollowups(
+    contactId: string,
+    interactionId: string,
+    followups: Array<{ task: string; due_date: string }>
+) {
+    const rows = followups
+        .filter(f => f.task?.trim() && f.due_date)
+        .map(f => ({
+            contact_id: contactId,
+            interaction_id: interactionId,
+            task: f.task.trim(),
+            due_date: f.due_date,
+        }));
+
+    if (rows.length === 0) return;
+
+    const { error } = await supabase.from('followups').insert(rows);
+    if (error) throw error;
+}
+
 export async function createContact(contactData: {
     display_name: string;
     primary_phone?: string;

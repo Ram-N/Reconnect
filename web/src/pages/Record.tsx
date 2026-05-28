@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRecorder } from '../hooks/useRecorder';
-import { processAudio, saveInteraction, supabase, getContacts } from '../lib/api';
+import { processAudio, saveInteraction, saveFollowups, supabase, getContacts } from '../lib/api';
 import { Mic, Square, Upload, Loader2, X, Plus, Pause, Play } from 'lucide-react';
 import { Button, Toast, TopNav, QuickAddContactModal } from '../components';
 import { getSelfContactId, getUnassignedContactId } from '../lib/specialContacts';
@@ -180,7 +180,7 @@ export function RecordPage() {
         try {
             // Save interaction for each selected contact
             for (const contactId of contactIds) {
-                await saveInteraction({
+                const interaction = await saveInteraction({
                     owner_uid: user.id,
                     contact_id: contactId,
                     transcript: editableData.transcript,
@@ -193,6 +193,7 @@ export function RecordPage() {
                     },
                     occurred_at: new Date().toISOString(),
                 });
+                await saveFollowups(contactId, interaction.id, editableData.followups);
             }
 
             setToast({ message: 'Note saved successfully!', type: 'success' });
