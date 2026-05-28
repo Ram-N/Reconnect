@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, getContacts } from '../lib/api';
-import { getUnassignedContactId, getSelfContactId, SPECIAL_CONTACTS } from '../lib/specialContacts';
+import { getUnassignedContactId, getSelfContactId } from '../lib/specialContacts';
 import { TopNav, Button, EmptyState } from '../components';
 import { FileQuestion, UserPlus, Calendar, Tag } from 'lucide-react';
 
@@ -60,14 +60,10 @@ export function ToBeAssignedPage() {
 
             // Load contacts for assignment dropdown (include Self, exclude Unassigned)
             const [contactsData, selfId] = await Promise.all([getContacts(), getSelfContactId()]);
-            const regularContacts = contactsData?.filter(
-                c => c.display_name !== SPECIAL_CONTACTS.UNASSIGNED
-            ) || [];
-            // Rename __Self to "Note to Self" for display
-            const displayContacts = regularContacts.map(c =>
-                c.id === selfId ? { ...c, display_name: 'Note to Self' } : c
-            );
-            setContacts(displayContacts);
+            const regularContacts = contactsData || [];
+            // Prepend Note to Self manually since getContacts() filters it out
+            const selfEntry = selfId ? [{ id: selfId, display_name: 'Note to Self' }] : [];
+            setContacts([...selfEntry, ...regularContacts]);
         } catch (error) {
             console.error('Failed to load unassigned notes:', error);
         } finally {
@@ -118,12 +114,8 @@ export function ToBeAssignedPage() {
 
             // Refresh contacts list
             const [refreshedContacts, selfId] = await Promise.all([getContacts(), getSelfContactId()]);
-            const regularContacts = refreshedContacts?.filter(
-                c => c.display_name !== SPECIAL_CONTACTS.UNASSIGNED
-            ) || [];
-            setContacts(regularContacts.map(c =>
-                c.id === selfId ? { ...c, display_name: 'Note to Self' } : c
-            ));
+            const selfEntry = selfId ? [{ id: selfId, display_name: 'Note to Self' }] : [];
+            setContacts([...selfEntry, ...(refreshedContacts || [])]);
         } catch (error) {
             console.error('Failed to create contact:', error);
             alert('Failed to create contact');
