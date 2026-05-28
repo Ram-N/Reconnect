@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase, getContacts } from '../lib/api';
 import { getUnassignedContactId, getSelfContactId } from '../lib/specialContacts';
-import { TopNav, Button, EmptyState } from '../components';
+import { TopNav, Button, EmptyState, QuickAddContactModal } from '../components';
 import { FileQuestion, UserPlus, Calendar, Tag } from 'lucide-react';
 
 interface UnassignedNote {
@@ -28,6 +28,7 @@ export function ToBeAssignedPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [user, setUser] = useState<any>(null);
     const [assigningNoteId, setAssigningNoteId] = useState<string | null>(null);
+    const [quickAddNoteId, setQuickAddNoteId] = useState<string | null>(null);
 
     useEffect(() => {
         loadData();
@@ -228,8 +229,12 @@ export function ToBeAssignedPage() {
                                     <label className="text-xs text-gray-500 mb-1 block">Or assign to existing contact:</label>
                                     <select
                                         onChange={(e) => {
-                                            if (e.target.value) {
-                                                assignToContact(note.id, e.target.value);
+                                            const val = e.target.value;
+                                            if (val === '__create_new') {
+                                                e.target.value = '';
+                                                setQuickAddNoteId(note.id);
+                                            } else if (val) {
+                                                assignToContact(note.id, val);
                                             }
                                         }}
                                         disabled={assigningNoteId === note.id}
@@ -242,6 +247,7 @@ export function ToBeAssignedPage() {
                                                 {contact.display_name}
                                             </option>
                                         ))}
+                                        <option value="__create_new">＋ Create New Contact</option>
                                     </select>
                                 </div>
 
@@ -257,5 +263,17 @@ export function ToBeAssignedPage() {
                 )}
             </div>
         </div>
+
+        <QuickAddContactModal
+            isOpen={quickAddNoteId !== null}
+            onClose={() => setQuickAddNoteId(null)}
+            onSave={async (newContact) => {
+                setContacts(prev => [...prev, newContact].sort((a, b) => a.display_name.localeCompare(b.display_name)));
+                if (quickAddNoteId) {
+                    await assignToContact(quickAddNoteId, newContact.id);
+                }
+                setQuickAddNoteId(null);
+            }}
+        />
     );
 }
