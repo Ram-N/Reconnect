@@ -3,7 +3,7 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useRecorder } from '../hooks/useRecorder';
 import { processAudio, saveInteraction, supabase, getContacts } from '../lib/api';
 import { Mic, Square, Upload, Loader2, X, Plus, Pause, Play } from 'lucide-react';
-import { Button, Toast, TopNav } from '../components';
+import { Button, Toast, TopNav, QuickAddContactModal } from '../components';
 import { getSelfContactId, getUnassignedContactId } from '../lib/specialContacts';
 
 interface Contact {
@@ -36,6 +36,7 @@ export function RecordPage() {
     const [contacts, setContacts] = useState<Contact[]>([]);
     const [showContactSearch, setShowContactSearch] = useState(false);
     const [contactSearch, setContactSearch] = useState('');
+    const [showQuickAdd, setShowQuickAdd] = useState(false);
     const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
     const [autoProcessCountdown, setAutoProcessCountdown] = useState<number | null>(null);
     const autoProcessTimerRef = useRef<number | null>(null);
@@ -301,6 +302,14 @@ export function RecordPage() {
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
 
+    const handleQuickAddSave = async (newContact: { id: string; display_name: string }) => {
+        setContacts(prev => [...prev, newContact].sort((a, b) => a.display_name.localeCompare(b.display_name)));
+        setShowQuickAdd(false);
+        setShowContactSearch(false);
+        setContactSearch('');
+        await toggleContact(newContact.id);
+    };
+
     const filteredContacts = contacts.filter(c =>
         c.display_name.toLowerCase().includes(contactSearch.toLowerCase())
     );
@@ -363,6 +372,12 @@ export function RecordPage() {
                                             {contact.display_name}
                                         </button>
                                     ))}
+                                    <button
+                                        onClick={() => setShowQuickAdd(true)}
+                                        className="w-full text-left px-3 py-2 hover:bg-blue-50 rounded text-sm text-blue-600 font-medium border-t mt-1 pt-2"
+                                    >
+                                        + Create New Contact
+                                    </button>
                                 </div>
                             </div>
                         )}
@@ -502,6 +517,13 @@ export function RecordPage() {
                         onClose={() => setToast(null)}
                     />
                 )}
+
+                <QuickAddContactModal
+                    isOpen={showQuickAdd}
+                    initialName={editableData.people[0]?.name ?? ''}
+                    onClose={() => setShowQuickAdd(false)}
+                    onSave={handleQuickAddSave}
+                />
             </div>
         );
     }

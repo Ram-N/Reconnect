@@ -41,6 +41,34 @@ export async function saveInteraction(interaction: any) {
     return data;
 }
 
+export async function createContact(contactData: {
+    display_name: string;
+    primary_phone?: string;
+    primary_email?: string;
+    cadence_days?: number;
+    notes?: string;
+}) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const nextCheckinDate = contactData.cadence_days
+        ? new Date(Date.now() + contactData.cadence_days * 24 * 60 * 60 * 1000).toISOString()
+        : null;
+
+    const { data, error } = await supabase
+        .from('contacts')
+        .insert({
+            ...contactData,
+            owner_uid: user.id,
+            next_checkin_date: nextCheckinDate,
+        })
+        .select()
+        .single();
+
+    if (error) throw error;
+    return data;
+}
+
 export async function getContacts() {
     const { data, error } = await supabase
         .from('contacts')
