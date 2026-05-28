@@ -6,6 +6,116 @@ const corsHeaders = {
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Load balancing: rotate through multiple API keys
+let currentGroqKeyIndex = 0
+let currentNimKeyIndex = 0
+
+function getNextGroqKey(): string {
+    // Load all keys from environment
+    const keys = [
+        Deno.env.get('GROQ_API_KEY1'),
+        Deno.env.get('GROQ_API_KEY2'),
+        Deno.env.get('GROQ_API_KEY3'),
+    ].filter(Boolean) // Remove null/undefined
+
+    // Fallback to single key for backwards compatibility
+    if (keys.length === 0) {
+        const singleKey = Deno.env.get('GROQ_API_KEY')
+        if (!singleKey) {
+            throw new Error('No GROQ_API_KEY configured')
+        }
+        return singleKey
+    }
+
+    // Round-robin rotation
+    const key = keys[currentGroqKeyIndex % keys.length]
+    currentGroqKeyIndex = (currentGroqKeyIndex + 1) % keys.length
+
+    console.log(`Using Groq key ${(currentGroqKeyIndex === 0 ? keys.length : currentGroqKeyIndex)} of ${keys.length}`)
+
+    return key!
+}
+
+function getNextNimKey(): string {
+    const keys = [
+        Deno.env.get('NIM_API_KEY1'),
+        Deno.env.get('NIM_API_KEY2'),
+    ].filter(Boolean)
+
+    if (keys.length === 0) {
+        const singleKey = Deno.env.get('NIM_API_KEY')
+        if (!singleKey) {
+            throw new Error('No NIM_API_KEY configured')
+        }
+        return singleKey
+    }
+
+    const key = keys[currentNimKeyIndex % keys.length]
+    currentNimKeyIndex = (currentNimKeyIndex + 1) % keys.length
+
+    console.log(`Using NIM key ${(currentNimKeyIndex === 0 ? keys.length : currentNimKeyIndex)} of ${keys.length}`)
+
+    return key!
+}
+
+async function callOpenAICompatibleLLM(
+    systemPrompt: string,
+    userPrompt: string,
+    baseUrl: string,
+    model: string,
+    apiKey: string
+): Promise<object> {
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            model,
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: userPrompt },
+            ],
+            response_format: { type: 'json_object' },
+            temperature: 0.1,
+        }),
+    })
+
+    if (!response.ok) {
+        const err = await response.text()
+        throw new Error(`LLM call failed (${response.status}): ${err}`)
+    }
+
+    const result = await response.json()
+    return JSON.parse(result.choices[0].message.content)
+}
+
+async function extractStructuredData(systemPrompt: string, userPrompt: string): Promise<object> {
+    // Primary: NVIDIA NIM
+    try {
+        console.log('Attempting LLM extraction via NIM...')
+        const nimKey = getNextNimKey()
+        return await callOpenAICompatibleLLM(
+            systemPrompt, userPrompt,
+            'https://integrate.api.nvidia.com/v1',
+            'meta/llama-3.3-70b-instruct',
+            nimKey
+        )
+    } catch (nimError) {
+        console.warn('NIM failed, falling back to Groq LLM:', nimError.message)
+    }
+
+    // Secondary: Groq LLM
+    const groqKey = getNextGroqKey()
+    return await callOpenAICompatibleLLM(
+        systemPrompt, userPrompt,
+        'https://api.groq.com/openai/v1',
+        'llama-3.3-70b-versatile',
+        groqKey
+    )
+}
+
 serve(async (req) => {
     if (req.method === 'OPTIONS') {
         return new Response('ok', { headers: corsHeaders })
@@ -19,11 +129,8 @@ serve(async (req) => {
             throw new Error('No audio file uploaded')
         }
 
-        // 1. STT: Call Groq Whisper API
-        const groqKey = Deno.env.get('GROQ_API_KEY')
-        if (!groqKey) {
-            throw new Error('GROQ_API_KEY not set')
-        }
+        // 1. STT: Call Groq Whisper API with load-balanced key
+        const groqKey = getNextGroqKey()
 
         const whisperFormData = new FormData()
         whisperFormData.append('file', audioFile)
@@ -68,30 +175,7 @@ ${JSON.stringify(schema, null, 2)}
 Transcript:
 ${transcript}`
 
-        const llmResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${groqKey}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                model: 'llama-3.3-70b-versatile',
-                messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                ],
-                response_format: { type: "json_object" }
-            }),
-        })
-
-        if (!llmResponse.ok) {
-            const err = await llmResponse.text()
-            console.error('LLM Error:', err)
-            throw new Error(`LLM failed: ${err}`)
-        }
-
-        const llmResult = await llmResponse.json()
-        const extracted = JSON.parse(llmResult.choices[0].message.content)
+        const extracted = await extractStructuredData(systemPrompt, userPrompt)
 
         return new Response(JSON.stringify({ transcript, extracted }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
