@@ -18,7 +18,7 @@ Then open: **http://localhost:5173**
 
 - ✅ Voice recording via browser microphone
 - ✅ AI transcription (Groq Whisper large-v3)
-- ✅ Smart data extraction (Groq Llama 3.3 70B)
+- ✅ Smart data extraction (NIM Llama 3.3 70B → Groq fallback)
 - ✅ Save interactions to Supabase with RLS
 
 ## First Time Setup
@@ -31,7 +31,8 @@ Then open: **http://localhost:5173**
 
 ## Important Links
 
-- **App**: http://localhost:5173
+- **App (Local)**: http://localhost:5173
+- **App (Production)**: https://reconnect-nine.vercel.app/
 - **Supabase Dashboard**: https://supabase.com/dashboard/project/kjlhpzkzvinaophbxqdy
 - **GitHub Repo**: https://github.com/Ram-N/Reconnect
 
